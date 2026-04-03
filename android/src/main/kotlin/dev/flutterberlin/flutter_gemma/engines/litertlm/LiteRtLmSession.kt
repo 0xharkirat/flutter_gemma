@@ -25,6 +25,7 @@ private const val TAG = "LiteRtLmSession"
 class LiteRtLmSession(
     engine: Engine,
     config: SessionConfig,
+    preferredBackend: dev.flutterberlin.flutter_gemma.PreferredBackend?,
     private val resultFlow: MutableSharedFlow<Pair<String, Boolean>>,
     private val errorFlow: MutableSharedFlow<Throwable>
 ) : InferenceSession {
@@ -38,17 +39,21 @@ class LiteRtLmSession(
     @Volatile private var pendingAudio: ByteArray? = null
 
     init {
-        // Build sampler config
-        val samplerConfig = SamplerConfig(
-            topK = config.topK,
-            topP = (config.topP ?: 0.95f).toDouble(),
-            temperature = config.temperature.toDouble(),
-        )
+        // NPU backend doesn't support sampler config (per Google AI Edge Gallery reference)
+        val samplerConfig = if (preferredBackend == dev.flutterberlin.flutter_gemma.PreferredBackend.NPU) {
+            null
+        } else {
+            SamplerConfig(
+                topK = config.topK,
+                topP = (config.topP ?: 0.95f).toDouble(),
+                temperature = config.temperature.toDouble(),
+            )
+        }
 
         // Build conversation config
         val conversationConfig = ConversationConfig(
             samplerConfig = samplerConfig,
-            systemMessage = null, // System message not exposed in current API
+            systemInstruction = null,
         )
 
         conversation = engine.createConversation(conversationConfig)

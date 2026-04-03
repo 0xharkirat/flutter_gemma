@@ -1,6 +1,7 @@
 enum ModelType {
   general,
   gemmaIt,
+  gemma4,
   deepSeek,
   qwen,
   llama,

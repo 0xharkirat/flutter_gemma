@@ -57,7 +57,9 @@ class LiteRtLmEngine(
         // Map PreferredBackend to LiteRT-LM Backend
         val backend = when (config.preferredBackend) {
             PreferredBackend.GPU -> Backend.GPU()
-            PreferredBackend.NPU -> Backend.NPU()
+            PreferredBackend.NPU -> Backend.NPU(
+                nativeLibraryDir = context.applicationInfo.nativeLibraryDir
+            )
             PreferredBackend.CPU,
             null -> Backend.CPU()
         }
@@ -83,6 +85,7 @@ class LiteRtLmEngine(
             val newEngine = Engine(engineConfig)
             newEngine.initialize() // Can take 10+ seconds on cold start, 1-2s with cache
             engine = newEngine
+            initializedBackend = config.preferredBackend
             isInitialized = true
 
             Log.i(TAG, "LiteRT-LM engine initialized successfully")
@@ -92,10 +95,13 @@ class LiteRtLmEngine(
         }
     }
 
+    // Store the backend used during initialization for session creation
+    private var initializedBackend: PreferredBackend? = null
+
     override fun createSession(config: SessionConfig): InferenceSession {
         val currentEngine = engine
             ?: throw IllegalStateException("Engine not initialized. Call initialize() first.")
-        return LiteRtLmSession(currentEngine, config, _partialResults, _errors)
+        return LiteRtLmSession(currentEngine, config, initializedBackend, _partialResults, _errors)
     }
 
     override fun close() {
